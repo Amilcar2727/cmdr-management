@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Comedor — Admin</title>
+  <meta name="description" content="Panel de administración del sistema de reservas del comedor universitario." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     SIDEBAR
+     ══════════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🍽️ Comedor Admin</h1>
+    <p>Sistema de Reservas</p>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">📊</span> Resumen General
+    </div>
+
+    <div class="nav-section-label" style="margin-top:18px">Tablas</div>
+    <div class="nav-item" id="nav-estudiantes" onclick="navigate('estudiantes')">
+      <span class="nav-icon">🎓</span> Estudiantes
+    </div>
+    <div class="nav-item" id="nav-periodos" onclick="navigate('periodos')">
+      <span class="nav-icon">📅</span> Periodos de Reserva
+    </div>
+    <div class="nav-item" id="nav-reservas" onclick="navigate('reservas')">
+      <span class="nav-icon">🍱</span> Reservas
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="db-status">
+      <span class="status-dot" id="db-status-dot"></span>
+      <span id="db-status-text">Verificando…</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN
+     ══════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Resumen General</div>
+      <div class="topbar-subtitle" id="topbar-subtitle">Vista general del sistema de comedor</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="refreshCurrent()" title="Actualizar">
+      🔄 Actualizar
+    </button>
+  </header>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ─────────────────────────────────────────── -->
+    <section class="section active" id="section-dashboard">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">🎓</div>
+          <div><div class="stat-val" id="stat-estudiantes">—</div><div class="stat-lbl">Estudiantes</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple">📅</div>
+          <div><div class="stat-val" id="stat-periodos">—</div><div class="stat-lbl">Periodos</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">🍱</div>
+          <div><div class="stat-val" id="stat-reservas">—</div><div class="stat-lbl">Reservas totales</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber">⏳</div>
+          <div><div class="stat-val" id="stat-pendientes">—</div><div class="stat-lbl">No sacadas / Pendientes</div></div>
+        </div>
+      </div>
+
+      <!-- Reservas recientes con filtros -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📋 Reservas Recientes</div>
+            <div class="card-desc">
+              Últimas reservas registradas
+              <span id="dash-filter-badge" class="filter-active-tag" style="display:none;margin-left:8px">
+                <span id="dash-filter-count"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros del dashboard -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label class="filter-label">Estado</label>
+            <select id="filter-dash-estado" class="filter-control" onchange="applyDashFilters()">
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Sacado">Sacado</option>
+              <option value="No Sacado">No Sacado</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label class="filter-label">Fecha desde</label>
+            <input type="date" id="filter-dash-desde" class="filter-control" onchange="applyDashFilters()" />
+          </div>
+          <div class="filter-item">
+            <label class="filter-label">Fecha hasta</label>
+            <input type="date" id="filter-dash-hasta" class="filter-control" onchange="applyDashFilters()" />
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearDashFilters()" style="align-self:flex-end">
+            ✕ Limpiar
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th>
+              <th>Estudiante</th>
+              <th>Código</th>
+              <th>Periodo</th>
+              <th>Estado</th>
+              <th>Fecha Reserva</th>
+            </tr></thead>
+            <tbody id="dash-reservas-body">
+              <tr class="loading-row"><td colspan="6"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section><!-- /dashboard -->
+
+    <!-- ── ESTUDIANTES ───────────────────────────────────────── -->
+    <section class="section" id="section-estudiantes">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🎓 Estudiantes</div>
+            <div class="card-desc">Gestión completa de estudiantes registrados</div>
+          </div>
+          <div class="card-header-right">
+            <div class="search-bar">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-estudiantes" placeholder="Buscar…"
+                     oninput="filterEstudiantes()" />
+            </div>
+            <button class="btn btn-primary" onclick="openModalCreate('estudiantes')">
+              ＋ Nuevo Estudiante
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Código</th><th>Nombre</th><th>Clave</th><th>Fecha Registro</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="table-estudiantes">
+              <tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="info-estudiantes">Cargando…</span>
+          <div class="pagination" id="pag-estudiantes"></div>
+        </div>
+      </div>
+    </section><!-- /estudiantes -->
+
+    <!-- ── PERIODOS ──────────────────────────────────────────── -->
+    <section class="section" id="section-periodos">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📅 Periodos de Reserva</div>
+            <div class="card-desc">Bloques quincenales de reserva del comedor</div>
+          </div>
+          <div class="card-header-right">
+            <div class="search-bar">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-periodos" placeholder="Buscar…"
+                     oninput="filterPeriodos()" />
+            </div>
+            <button class="btn btn-primary" onclick="openModalCreate('periodos')">
+              ＋ Nuevo Periodo
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Nombre del Periodo</th><th>Fecha Inicio</th>
+              <th>Fecha Fin</th><th>Estado</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="table-periodos">
+              <tr class="loading-row"><td colspan="6"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="info-periodos">Cargando…</span>
+          <div class="pagination" id="pag-periodos"></div>
+        </div>
+      </div>
+    </section><!-- /periodos -->
+
+    <!-- ── RESERVAS ──────────────────────────────────────────── -->
+    <section class="section" id="section-reservas">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🍱 Reservas del Comedor</div>
+            <div class="card-desc">
+              Historial y gestión de reservas
+              <span id="reservas-filter-badge" class="filter-active-tag" style="display:none;margin-left:8px"></span>
+            </div>
+          </div>
+          <div class="card-header-right">
+            <div class="search-bar">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="search-reservas" placeholder="Buscar…"
+                     oninput="applyReservaFilters()" />
+            </div>
+            <button class="btn btn-primary" onclick="openModalCreate('reservas')">
+              ＋ Nueva Reserva
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros de reservas -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label class="filter-label">Periodo</label>
+            <select id="filter-res-periodo" class="filter-control" onchange="applyReservaFilters()">
+              <option value="">Todos los periodos</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label class="filter-label">Estado</label>
+            <select id="filter-res-estado" class="filter-control" onchange="applyReservaFilters()">
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Sacado">Sacado</option>
+              <option value="No Sacado">No Sacado</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label class="filter-label">Fecha desde</label>
+            <input type="date" id="filter-res-desde" class="filter-control" onchange="applyReservaFilters()" />
+          </div>
+          <div class="filter-item">
+            <label class="filter-label">Fecha hasta</label>
+            <input type="date" id="filter-res-hasta" class="filter-control" onchange="applyReservaFilters()" />
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearReservaFilters()" style="align-self:flex-end">
+            ✕ Limpiar filtros
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Estudiante</th><th>Código</th>
+              <th>Periodo</th><th>Estado</th><th>Fecha Reserva</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="table-reservas">
+              <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="info-reservas">Cargando…</span>
+          <div class="pagination" id="pag-reservas"></div>
+        </div>
+      </div>
+    </section><!-- /reservas -->
+
+  </div><!-- /content -->
+</main>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — Estudiante
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-estudiante">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-est-title">Nuevo Estudiante</div>
+        <div class="modal-subtitle" id="modal-est-subtitle">Complete los datos para registrar</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-estudiante')">✕</button>
+    </div>
+    <form id="form-estudiante" onsubmit="submitEstudiante(event)">
+      <div class="form-group">
+        <label class="form-label" for="est-codigo">Código *</label>
+        <input id="est-codigo" class="form-control" type="text" maxlength="10"
+               placeholder="Ej: 20220145" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="est-nombre">Nombre completo *</label>
+        <input id="est-nombre" class="form-control" type="text" maxlength="150"
+               placeholder="Ej: Juan Pérez García" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="est-clave">Clave *</label>
+        <input id="est-clave" class="form-control" type="text" maxlength="255"
+               placeholder="Clave del estudiante" required />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-estudiante')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-est">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — Periodo
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-periodo">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-per-title">Nuevo Periodo</div>
+        <div class="modal-subtitle" id="modal-per-subtitle">Define un bloque de reserva quincenal</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-periodo')">✕</button>
+    </div>
+    <form id="form-periodo" onsubmit="submitPeriodo(event)">
+      <div class="form-group">
+        <label class="form-label" for="per-nombre">Nombre del periodo *</label>
+        <input id="per-nombre" class="form-control" type="text" maxlength="100"
+               placeholder="Ej: Primera Quincena - Julio 2026" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="per-inicio">Fecha inicio *</label>
+          <input id="per-inicio" class="form-control" type="date" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="per-fin">Fecha fin *</label>
+          <input id="per-fin" class="form-control" type="date" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="per-activo" checked />
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:0.875rem;color:var(--text-secondary)">Periodo activo</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-periodo')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-per">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — Reserva
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-reserva">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-res-title">Nueva Reserva</div>
+        <div class="modal-subtitle" id="modal-res-subtitle">Asigna una reserva a un estudiante</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-reserva')">✕</button>
+    </div>
+    <form id="form-reserva" onsubmit="submitReserva(event)">
+      <div class="form-group">
+        <label class="form-label" for="res-estudiante">Estudiante *</label>
+        <select id="res-estudiante" class="form-control" required>
+          <option value="">— Seleccionar estudiante —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="res-periodo">Periodo *</label>
+        <select id="res-periodo" class="form-control" required>
+          <option value="">— Seleccionar periodo —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="res-estado">Estado de reserva</label>
+        <select id="res-estado" class="form-control">
+          <option value="Pendiente">Pendiente</option>
+          <option value="Sacado">Sacado</option>
+          <option value="No Sacado">No Sacado</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-reserva')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-res">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — Confirmar eliminación
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay confirm-modal" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title">⚠️ Confirmar eliminación</div></div>
+      <button class="modal-close" onclick="closeModal('modal-confirm')">✕</button>
+    </div>
+    <p class="confirm-body" id="confirm-msg">¿Estás seguro de que deseas eliminar este registro?</p>
+    <div class="confirm-warn">Esta acción no se puede deshacer y puede afectar registros relacionados.</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="btn-confirm-delete" onclick="confirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ─────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ── Scripts (ES Modules) ───────────────────────────────── -->
+<script type="module" src="./js/app.js"></script>
+
+</body>
+</html>
