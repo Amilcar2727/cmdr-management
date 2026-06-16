@@ -4,9 +4,10 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  // Esto es crucial para que Render acepte la conexión segura SSL
+  ssl: process.env.DATABASE_URL.includes('render.com') 
+    ? { rejectUnauthorized: false } 
+    : false
 });
 
 pool.connect((err, client, release) => {
